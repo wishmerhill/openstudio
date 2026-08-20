@@ -1,9 +1,10 @@
-import { Trash2, DoorOpen, Info, MoveRight } from "lucide-react";
+import { Trash2, DoorOpen, Info, MoveRight, ArrowLeftRight } from "lucide-react";
 import type { Hotspot, HotspotType, Scene } from "@/types/tour";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -21,6 +22,8 @@ interface Props {
   onDeleteSelectedHotspot?: () => void;
   onSelectHotspot?: (id: string | null) => void;
   onDeleteHotspot?: (id: string) => void;
+  /** Chiamata quando l'utente attiva "Crea hotspot di ritorno" con la scena di destinazione */
+  onCreateReverseHotspot?: (targetSceneId: string) => void;
 }
 
 export function PropertiesPanel({
@@ -32,6 +35,7 @@ export function PropertiesPanel({
   onDeleteSelectedHotspot,
   onSelectHotspot,
   onDeleteHotspot,
+  onCreateReverseHotspot,
 }: Props) {
   return (
     <aside className="flex w-76 shrink-0 flex-col overflow-y-auto border-l border-border bg-sidebar">
@@ -92,10 +96,10 @@ export function PropertiesPanel({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button size="xs" variant="ghost" onClick={(e) => { e.stopPropagation(); onSelectHotspot?.(h.id); }}>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onSelectHotspot?.(h.id); }}>
                           Edit
                         </Button>
-                        <Button size="xs" variant="destructive" onClick={(e) => { e.stopPropagation(); onDeleteHotspot?.(h.id); }}>
+                        <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); onDeleteHotspot?.(h.id); }}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -188,6 +192,25 @@ export function PropertiesPanel({
               </SelectContent>
             </Select>
           </div>
+
+          {hotspot.targetSceneId && (
+            <div className="flex items-center justify-between rounded-md border border-border bg-panel px-3 py-2">
+              <div className="flex items-center gap-2">
+                <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label className="text-xs cursor-pointer" htmlFor="reverse-hotspot">
+                  Create return hotspot
+                </Label>
+              </div>
+              <Switch
+                id="reverse-hotspot"
+                onCheckedChange={(checked) => {
+                  if (checked && hotspot.targetSceneId) {
+                    onCreateReverseHotspot?.(hotspot.targetSceneId);
+                  }
+                }}
+              />
+            </div>
+          )}
 
           <Button
             variant="destructive"

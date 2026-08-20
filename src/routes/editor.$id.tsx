@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { LeftSidebar } from "@/components/studio/LeftSidebar";
 import { PropertiesPanel } from "@/components/studio/PropertiesPanel";
 import { PanoCanvas } from "@/components/studio/PanoCanvas";
+import { ReverseHotspotModal } from "@/components/studio/ReverseHotspotModal";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/editor/$id")({
@@ -51,6 +52,7 @@ function Studio() {
   const [mode, setMode] = useState<"editor" | "preview">("editor");
   const [placing, setPlacing] = useState(false);
   const [sceneUrls, setSceneUrls] = useState<Record<string, string>>({});
+  const [reverseHotspotTargetId, setReverseHotspotTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     const found = getProject(id);
@@ -189,6 +191,34 @@ function Studio() {
     const saved = upsertProject(project);
     setProject(saved);
     toast.success("Project saved");
+  };
+
+  const handleCreateReverseHotspot = (targetSceneId: string) => {
+    setReverseHotspotTargetId(targetSceneId);
+  };
+
+  const handleConfirmReverseHotspot = (pitch: number, yaw: number) => {
+    if (!reverseHotspotTargetId || !activeSceneId) return;
+
+    const reverseHotspot: Hotspot = {
+      id: uid("hs"),
+      type: "door",
+      pitch,
+      yaw,
+      tooltip: "Return",
+      targetSceneId: activeSceneId,
+    };
+
+    update((draft) => ({
+      ...draft,
+      scenes: draft.scenes.map((s) =>
+        s.id === reverseHotspotTargetId
+          ? { ...s, hotspots: [...s.hotspots, reverseHotspot] }
+          : s,
+      ),
+    }));
+
+    toast.success("Return hotspot created");
   };
 
   if (!loaded) return <div className="min-h-screen bg-background" />;
@@ -353,6 +383,21 @@ function Studio() {
               }));
               if (selectedHotspotId === id) setSelectedHotspotId(null);
             }}
+            onCreateReverseHotspot={handleCreateReverseHotspot}
+          />
+        )}
+
+        {reverseHotspotTargetId && (
+          <ReverseHotspotModal
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setReverseHotspotTargetId(null);
+            }}
+            targetImageUrl={sceneUrls[reverseHotspotTargetId] ?? ""}
+            targetSceneName={
+              project.scenes.find((s) => s.id === reverseHotspotTargetId)?.name ?? "Target scene"
+            }
+            onConfirm={handleConfirmReverseHotspot}
           />
         )}
       </div>
