@@ -50,6 +50,8 @@ export function PanoCanvas({
 
   const selectedHotspotIdRef = useRef<string | null>(selectedHotspotId);
   selectedHotspotIdRef.current = selectedHotspotId;
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
   const [zoom, setZoom] = useState(scene?.defaultZoom ?? 1);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -247,13 +249,19 @@ export function PanoCanvas({
     const onSelectMarker = (e: any) => {
       const markerId = e?.marker?.id ?? e?.id ?? null;
       if (!markerId) return;
-      const hs = scene?.hotspots.find((h) => h.id === markerId) ?? null;
+      // Usa sceneRef per evitare stale closure
+      const currentScene = sceneRef.current;
+      if (!currentScene) return;
+      const hs = currentScene.hotspots.find((h) => h.id === markerId) ?? null;
       if (!hs) return;
-      if (mode === "editor") {
+
+      if (modeRef.current === "editor") {
         onSelectHotspot(markerId);
         return;
       }
-      if ((hs.type === "door" || hs.type === "arrow") && hs.targetSceneId) {
+
+      // Preview mode: naviga se c'è un targetSceneId, altrimenti mostra tooltip
+      if (hs.targetSceneId) {
         onNavigate(hs.targetSceneId);
         return;
       }
@@ -265,124 +273,155 @@ export function PanoCanvas({
     const initialSyncTimer = window.setTimeout(() => {
       syncMarkers();
 
-      // Dopo aver creato i marker, attacha i listener di drag in editor mode
-      if (markersRef.current && mode === "editor") {
+      // Dopo aver creato i marker, attacha i listener in base alla modalità
+      if (markersRef.current) {
         try {
           const allMarkers = markersRef.current.getMarkers?.();
           if (allMarkers) {
             allMarkers.forEach((m: any) => {
               const el = m.element as HTMLElement | undefined;
               if (!el) return;
-              el.style.cursor = "grab";
 
-              el.addEventListener("mousedown", (e: MouseEvent) => {
-                if (modeRef.current !== "editor") return;
-                e.stopPropagation();
-                e.preventDefault();
+              if (modeRef.current === "editor") {
+                el.style.cursor = "grab";
 
-                // Seleziona il marker — apre la sidebar
-                onSelectHotspot(m.id);
+                el.addEventListener("mousedown", (e: MouseEvent) => {
+                  if (modeRef.current !== "editor") return;
+                  e.stopPropagation();
+                  e.preventDefault();
 
-                const viewer = viewerRef.current;
-                if (!viewer) return;
-
-                // Disabilita la rotazione della camera durante il drag
-                try {
-                  viewer.setOption('mousemove', false);
-                } catch (_) {}
-
-                // Leggi posizione corrente dalla mappa (ref, sempre aggiornata)
-                const saved = markerPositionsRef.current.get(m.id);
-                const initYawRad = saved?.yaw ?? 0;
-                const initPitchRad = saved?.pitch ?? 0;
-
-                // Salva stato iniziale
-                dragState.markerId = m.id;
-                dragState.dragging = true;
-                dragState.initYawRad = initYawRad;
-                dragState.initPitchRad = initPitchRad;
-                dragState.mouseStartX = e.clientX;
-                dragState.mouseStartY = e.clientY;
-
-                // Sensibilità: 0.3° per pixel di movimento mouse
-                const radPerPx = (0.3 * Math.PI) / 180;
-
-                const onMouseMove = (ev: MouseEvent) => {
-                  if (!dragState.dragging || !dragState.markerId || !containerRef.current) return;
-
-                  const dx = ev.clientX - dragState.mouseStartX;
-                  const dy = ev.clientY - dragState.mouseStartY;
-
-                  const containerWidth = containerRef.current.clientWidth || 1000;
-                  const containerHeight = containerRef.current.clientHeight || 600;
+                  // Seleziona il marker — apre la sidebar
+                  onSelectHotspot(m.id);
 
                   const viewer = viewerRef.current;
                   if (!viewer) return;
 
-                  // 1. Recupera il FOV verticale REALE corrente di PSV v5 (in radianti)
-                  // PSV v5 memorizza il vFov corrente nello stato interno della camera
-                  let vFovRad = Math.PI / 3; // Fallback ~60°
+                  // Disabilita la rotazione della camera durante il drag
                   try {
-                    const defaultFovDeg = viewer.getOption?.("defaultFov") ?? 60;
-                    vFovRad = viewer.state?.vFov ?? (defaultFovDeg * Math.PI) / 180;
+                    viewer.setOption('mousemove', false);
                   } catch (_) {}
 
-                  // 2. Calcolo trigonomerico dell'angolo di spostamento esatto
-                  // Convertiamo lo spostamento in pixel (dx, dy) rispetto alla mezza altezza del canvas proiettata
-                  const halfH = containerHeight / 2;
-                  const tanHalfVFov = Math.tan(vFovRad / 2);
+                  // Leggi posizione corrente dalla mappa (ref, sempre aggiornata)
+                  const saved = markerPositionsRef.current.get(m.id);
+                  const initYawRad = saved?.yaw ?? 0;
+                  const initPitchRad = saved?.pitch ?? 0;
 
-                  // Spostamento in radianti sferici proporzionale alla proiezione della prospettiva
-                  const yawDelta = Math.atan((dx / halfH) * tanHalfVFov);
-                  const pitchDelta = Math.atan((dy / halfH) * tanHalfVFov);
+                  // Salva stato iniziale
+                  dragState.markerId = m.id;
+                  dragState.dragging = true;
+                  dragState.initYawRad = initYawRad;
+                  dragState.initPitchRad = initPitchRad;
+                  dragState.mouseStartX = e.clientX;
+                  dragState.mouseStartY = e.clientY;
 
-                  // 3. Nuove coordinate traslate (inversione del pitch dy per sistema sferico)
-                  const newYawRad = dragState.initYawRad + yawDelta;
-                  const newPitchRad = Math.max(
-                    -Math.PI / 2 + 0.01,
-                    Math.min(Math.PI / 2 - 0.01, dragState.initPitchRad - pitchDelta)
-                  );
+                  // Sensibilità: 0.3° per pixel di movimento mouse
+                  const radPerPx = (0.3 * Math.PI) / 180;
 
-                  try {
-                    markersRef.current?.updateMarker?.({
-                      id: dragState.markerId,
-                      position: { yaw: newYawRad, pitch: newPitchRad },
-                    });
+                  const onMouseMove = (ev: MouseEvent) => {
+                    if (!dragState.dragging || !dragState.markerId || !containerRef.current) return;
 
-                    markerPositionsRef.current.set(dragState.markerId, {
-                      yaw: newYawRad,
-                      pitch: newPitchRad,
-                    });
-                    dragState.finalYawRad = newYawRad;
-                    dragState.finalPitchRad = newPitchRad;
-                  } catch (er) {
-                    // ignore
+                    const dx = ev.clientX - dragState.mouseStartX;
+                    const dy = ev.clientY - dragState.mouseStartY;
+
+                    const containerWidth = containerRef.current.clientWidth || 1000;
+                    const containerHeight = containerRef.current.clientHeight || 600;
+
+                    const viewer = viewerRef.current;
+                    if (!viewer) return;
+
+                    // 1. Recupera il FOV verticale REALE corrente di PSV v5 (in radianti)
+                    let vFovRad = Math.PI / 3; // Fallback ~60°
+                    try {
+                      const defaultFovDeg = viewer.getOption?.("defaultFov") ?? 60;
+                      vFovRad = viewer.state?.vFov ?? (defaultFovDeg * Math.PI) / 180;
+                    } catch (_) {}
+
+                    // 2. Calcolo trigonomerico dell'angolo di spostamento esatto
+                    const halfH = containerHeight / 2;
+                    const tanHalfVFov = Math.tan(vFovRad / 2);
+
+                    const yawDelta = Math.atan((dx / halfH) * tanHalfVFov);
+                    const pitchDelta = Math.atan((dy / halfH) * tanHalfVFov);
+
+                    // 3. Nuove coordinate traslate
+                    const newYawRad = dragState.initYawRad + yawDelta;
+                    const newPitchRad = Math.max(
+                      -Math.PI / 2 + 0.01,
+                      Math.min(Math.PI / 2 - 0.01, dragState.initPitchRad - pitchDelta)
+                    );
+
+                    try {
+                      markersRef.current?.updateMarker?.({
+                        id: dragState.markerId,
+                        position: { yaw: newYawRad, pitch: newPitchRad },
+                      });
+
+                      markerPositionsRef.current.set(dragState.markerId, {
+                        yaw: newYawRad,
+                        pitch: newPitchRad,
+                      });
+                      dragState.finalYawRad = newYawRad;
+                      dragState.finalPitchRad = newPitchRad;
+                    } catch (er) {
+                      // ignore
+                    }
+                  };
+
+                  const onMouseUp = () => {
+                    dragState.dragging = false;
+
+                    // Riabilita la rotazione della camera
+                    try {
+                      viewer.setOption('mousemove', true);
+                    } catch (_) {}
+
+                    if (dragState.markerId && dragState.finalYawRad !== undefined && dragState.finalPitchRad !== undefined) {
+                      const yawDeg = (dragState.finalYawRad * 180) / Math.PI;
+                      const pitchDeg = (dragState.finalPitchRad * 180) / Math.PI;
+                      onMoveHotspot(dragState.markerId, Number(pitchDeg.toFixed(3)), Number(yawDeg.toFixed(3)));
+                    }
+                    dragState.markerId = null;
+                    delete dragState.finalYawRad;
+                    delete dragState.finalPitchRad;
+                    window.removeEventListener("mousemove", onMouseMove);
+                    window.removeEventListener("mouseup", onMouseUp);
+                  };
+
+                  window.addEventListener("mousemove", onMouseMove);
+                  window.addEventListener("mouseup", onMouseUp);
+                });
+              } else {
+                // Preview mode: cursore pointer su qualsiasi marker
+                el.style.cursor = "pointer";
+
+                // Hover glow in preview: evidenzia il marker con bordo glow azzurro
+                el.addEventListener("mouseenter", () => {
+                  el.style.filter = "brightness(1.3) drop-shadow(0 0 6px rgba(59,130,246,0.9))";
+                });
+                el.addEventListener("mouseleave", () => {
+                  el.style.filter = "";
+                });
+
+                // Click diretto sul marker in preview per navigare
+                // (fallback nel caso select-marker di PSV non venga emesso)
+                el.addEventListener("click", (e: MouseEvent) => {
+                  if (modeRef.current !== "preview") return;
+                  e.stopPropagation();
+                  e.preventDefault();
+
+                  const currentScene = sceneRef.current;
+                  if (!currentScene) return;
+                  const hs = currentScene.hotspots.find((h) => h.id === m.id);
+                  if (!hs) return;
+
+                  if (hs.targetSceneId) {
+                    onNavigate(hs.targetSceneId);
+                  } else {
+                    setToast(hs.tooltip || "No information");
+                    window.setTimeout(() => setToast(null), 2600);
                   }
-                };
-
-                const onMouseUp = () => {
-                  dragState.dragging = false;
-
-                  // Riabilita la rotazione della camera
-                  try {
-                    viewer.setOption('mousemove', true);
-                  } catch (_) {}
-
-                  if (dragState.markerId && dragState.finalYawRad !== undefined && dragState.finalPitchRad !== undefined) {
-                    const yawDeg = (dragState.finalYawRad * 180) / Math.PI;
-                    const pitchDeg = (dragState.finalPitchRad * 180) / Math.PI;
-                    onMoveHotspot(dragState.markerId, Number(pitchDeg.toFixed(3)), Number(yawDeg.toFixed(3)));
-                  }
-                  dragState.markerId = null;
-                  delete dragState.finalYawRad;
-                  delete dragState.finalPitchRad;
-                  window.removeEventListener("mousemove", onMouseMove);
-                  window.removeEventListener("mouseup", onMouseUp);
-                };
-
-                window.addEventListener("mousemove", onMouseMove);
-                window.addEventListener("mouseup", onMouseUp);
-              });
+                });
+              }
             });
           }
         } catch (e) {
