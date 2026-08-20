@@ -14,7 +14,7 @@ import type { Hotspot, Scene, Theme, TourProject } from "@/types/tour";
 import { uid } from "@/types/tour";
 import { getProject, upsertProject } from "@/lib/storage";
 import { deleteBlob, putBlob, resolveUrl } from "@/lib/idb";
-import { exportZip } from "@/lib/export";
+import { exportZip3D, exportZip2D } from "@/lib/export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -294,17 +294,31 @@ function Studio() {
           <Button size="sm" variant="secondary" onClick={handleSave}>
             <Save className="mr-1.5 h-3.5 w-3.5" /> Save
           </Button>
-          <Button
-            size="sm"
-            onClick={async () => {
-              const saved = upsertProject(project);
-              setProject(saved);
-              await exportZip(saved);
-              toast.success("ZIP exported");
-            }}
-          >
-            <FileArchive className="mr-1.5 h-3.5 w-3.5" /> Export ZIP
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                const saved = upsertProject(project);
+                setProject(saved);
+                await exportZip2D(saved);
+                toast.success("Export 2D completato");
+              }}
+            >
+              <FileArchive className="mr-1.5 h-3.5 w-3.5" /> Offline (2D)
+            </Button>
+            <Button
+              size="sm"
+              onClick={async () => {
+                const saved = upsertProject(project);
+                setProject(saved);
+                await exportZip3D(saved);
+                toast.success("Export 3D completato");
+              }}
+            >
+              <FileArchive className="mr-1.5 h-3.5 w-3.5" /> Server Web (3D)
+            </Button>
+          </div>
         </div>
       </header>
 
