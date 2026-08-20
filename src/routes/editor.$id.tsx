@@ -200,12 +200,14 @@ function Studio() {
   const handleConfirmReverseHotspot = (pitch: number, yaw: number) => {
     if (!reverseHotspotTargetId || !activeSceneId) return;
 
+    const currentSceneName = activeScene?.name ?? "previous scene";
+
     const reverseHotspot: Hotspot = {
       id: uid("hs"),
       type: "door",
       pitch,
       yaw,
-      tooltip: "Return",
+      tooltip: `Return to ${currentSceneName}`,
       targetSceneId: activeSceneId,
     };
 
