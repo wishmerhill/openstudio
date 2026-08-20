@@ -6,6 +6,7 @@ import {
   Eye,
   FileArchive,
   MapPin,
+  Monitor,
   Pencil,
   Save,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import { LeftSidebar } from "@/components/studio/LeftSidebar";
 import { PropertiesPanel } from "@/components/studio/PropertiesPanel";
 import { PanoCanvas } from "@/components/studio/PanoCanvas";
 import { ReverseHotspotModal } from "@/components/studio/ReverseHotspotModal";
+import { ExportDesktopModal } from "@/components/studio/ExportDesktopModal";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/editor/$id")({
@@ -53,6 +55,7 @@ function Studio() {
   const [placing, setPlacing] = useState(false);
   const [sceneUrls, setSceneUrls] = useState<Record<string, string>>({});
   const [reverseHotspotTargetId, setReverseHotspotTargetId] = useState<string | null>(null);
+  const [exportDesktopOpen, setExportDesktopOpen] = useState(false);
 
   useEffect(() => {
     const found = getProject(id);
@@ -309,6 +312,13 @@ function Studio() {
             </Button>
             <Button
               size="sm"
+              variant="secondary"
+              onClick={() => setExportDesktopOpen(true)}
+            >
+              <Monitor className="mr-1.5 h-3.5 w-3.5" /> Desktop App
+            </Button>
+            <Button
+              size="sm"
               onClick={async () => {
                 const saved = upsertProject(project);
                 setProject(saved);
@@ -402,6 +412,12 @@ function Studio() {
             onCreateReverseHotspot={handleCreateReverseHotspot}
           />
         )}
+
+        <ExportDesktopModal
+          open={exportDesktopOpen}
+          onOpenChange={setExportDesktopOpen}
+          project={project}
+        />
 
         {reverseHotspotTargetId && (
           <ReverseHotspotModal

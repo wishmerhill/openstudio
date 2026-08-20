@@ -12,4 +12,17 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    base: './',
+    server: {
+      port: 3000,
+      strictPort: true,
+    },
+  },
+  nitro: {
+    prerender: {
+      routes: ["/"],
+      crawlLinks: true,
+    },
+  } as any,
 });

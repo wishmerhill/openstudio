@@ -30,3 +30,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+dist/
+dist-tauri/
+.output/
+src-tauri/target/
