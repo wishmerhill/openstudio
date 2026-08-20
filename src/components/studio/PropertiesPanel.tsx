@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Trash2, DoorOpen, Info, MoveRight } from "lucide-react";
 import type { Hotspot, HotspotType, Scene } from "@/types/tour";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,9 @@ interface Props {
   hotspot: Hotspot | null;
   onSceneChange: (patch: Partial<Scene>) => void;
   onHotspotChange: (patch: Partial<Hotspot>) => void;
-  onDeleteHotspot: () => void;
+  onDeleteSelectedHotspot?: () => void;
+  onSelectHotspot?: (id: string | null) => void;
+  onDeleteHotspot?: (id: string) => void;
 }
 
 export function PropertiesPanel({
@@ -27,6 +29,8 @@ export function PropertiesPanel({
   hotspot,
   onSceneChange,
   onHotspotChange,
+  onDeleteSelectedHotspot,
+  onSelectHotspot,
   onDeleteHotspot,
 }: Props) {
   return (
@@ -65,6 +69,42 @@ export function PropertiesPanel({
           <div className="rounded-md border border-border bg-panel px-2.5 py-2 text-[11px] text-muted-foreground">
             {scene.hotspots.length} hotspot{scene.hotspots.length === 1 ? "" : "s"} in this scene
           </div>
+
+          {scene.hotspots.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <Label className="text-xs">Hotspots in scene</Label>
+              <div className="space-y-2">
+                {scene.hotspots.map((h) => {
+                  const Icon = h.type === "door" ? DoorOpen : h.type === "info" ? Info : MoveRight;
+                  return (
+                    <div
+                      key={h.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-border bg-panel p-2 cursor-pointer"
+                      onClick={() => onSelectHotspot?.(h.id)}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-medium">{h.tooltip || h.type}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {h.pitch.toFixed(1)}°, {h.yaw.toFixed(1)}°
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="xs" variant="ghost" onClick={(e) => { e.stopPropagation(); onSelectHotspot?.(h.id); }}>
+                          Edit
+                        </Button>
+                        <Button size="xs" variant="destructive" onClick={(e) => { e.stopPropagation(); onDeleteHotspot?.(h.id); }}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <p className="border-b border-border p-3 text-xs text-muted-foreground">
@@ -149,7 +189,17 @@ export function PropertiesPanel({
             </Select>
           </div>
 
-          <Button variant="destructive" size="sm" className="w-full" onClick={onDeleteHotspot}>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              if (onDeleteSelectedHotspot) return onDeleteSelectedHotspot();
+              if (hotspot) {
+                onDeleteHotspot?.(hotspot.id);
+              }
+            }}
+          >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete hotspot
           </Button>
         </div>

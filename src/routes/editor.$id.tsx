@@ -330,7 +330,7 @@ function Studio() {
             hotspot={selectedHotspot}
             onSceneChange={(patch) => activeSceneId && patchScene(activeSceneId, patch)}
             onHotspotChange={(patch) => selectedHotspot && patchHotspot(selectedHotspot.id, patch)}
-            onDeleteHotspot={() => {
+            onDeleteSelectedHotspot={() => {
               if (!selectedHotspot || !activeSceneId) return;
               update((draft) => ({
                 ...draft,
@@ -341,6 +341,17 @@ function Studio() {
                 ),
               }));
               setSelectedHotspotId(null);
+            }}
+            onSelectHotspot={(id) => setSelectedHotspotId(id)}
+            onDeleteHotspot={(id) => {
+              if (!activeSceneId) return;
+              update((draft) => ({
+                ...draft,
+                scenes: draft.scenes.map((s) =>
+                  s.id === activeSceneId ? { ...s, hotspots: s.hotspots.filter((h) => h.id !== id) } : s,
+                ),
+              }));
+              if (selectedHotspotId === id) setSelectedHotspotId(null);
             }}
           />
         )}

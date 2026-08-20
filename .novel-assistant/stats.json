@@ -1,0 +1,25 @@
+{
+  "goals": {
+    "dailyWordGoal": 1000,
+    "sessionWordGoal": 500,
+    "projectWordGoal": 50000
+  },
+  "dailyStats": [
+    {
+      "date": "2026-08-19",
+      "wordsWritten": 575,
+      "timeSpentMinutes": 0,
+      "sessionsCount": 0
+    },
+    {
+      "date": "2026-08-20",
+      "wordsWritten": 826,
+      "timeSpentMinutes": 0,
+      "sessionsCount": 0
+    }
+  ],
+  "currentStreak": 0,
+  "longestStreak": 0,
+  "totalWordsEver": 1401,
+  "projectStartDate": "2026-08-19"
+}

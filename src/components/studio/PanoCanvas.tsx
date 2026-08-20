@@ -39,6 +39,17 @@ export function PanoCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<any | null>(null);
   const markersRef = useRef<any | null>(null);
+  // Mappa che tiene traccia della posizione corrente di ogni marker in radianti
+  const markerPositionsRef = useRef<Map<string, { yaw: number; pitch: number }>>(new Map());
+  // refs to avoid stale closures in viewer event handlers
+  const placingRef = useRef(placing);
+  placingRef.current = placing;
+
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+
+  const selectedHotspotIdRef = useRef<string | null>(selectedHotspotId);
+  selectedHotspotIdRef.current = selectedHotspotId;
   const [zoom, setZoom] = useState(scene?.defaultZoom ?? 1);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -72,16 +83,17 @@ export function PanoCanvas({
       defaultYaw: 0,
       defaultPitch: 0,
       navbar: false,
-      mousewheel: false,
+      mousewheel: true,
+      mousewheelCtrlKey: false,
+      zoomSpeed: 1,
+      minFov: 30,
+      maxFov: 90,
+      defaultZoomLvl: 1,
       mousemove: true,
-      useXmpData: false,
-      autorotateSpeed: 0,       // <-- BLOCCA la rotazione automatica
-      autorotateDelay: null,    // <-- DISABILITA il timer di autorotazione
-      moveSpeed: 1,            // <-- Velocità di trascinamento normale
-      plugins: [[MarkersPlugin]],
+      moveSpeed: 1,
+      plugins: [MarkersPlugin],
     });
 
-    // Blocca qualsiasi tentativo di autorotazione residua
     try {
       if (viewer.isAutorotateEnabled?.()) {
         viewer.stopAutorotate?.();
@@ -92,21 +104,28 @@ export function PanoCanvas({
 
     viewerRef.current = viewer;
 
-    const onClick = (e: any) => {
-      const pitch = e?.pitch ?? e?.data?.pitch ?? 0;
-      const yaw = e?.yaw ?? e?.data?.yaw ?? 0;
-      if (mode === "editor") {
-        if (placing) {
-          onAddHotspot(Number(pitch.toFixed?.(1) ?? pitch), Number(yaw.toFixed?.(1) ?? yaw));
+    const onClick = (data: any) => {
+      const pitchRad = data?.latitude ?? data?.pitch ?? data?.data?.latitude ?? data?.data?.pitch ?? 0;
+      const yawRad = data?.longitude ?? data?.yaw ?? data?.data?.longitude ?? data?.data?.yaw ?? 0;
+
+      const pitch = (pitchRad * 180) / Math.PI;
+      const yaw = (yawRad * 180) / Math.PI;
+
+      if (modeRef.current === "editor") {
+        if (placingRef.current) {
+          onAddHotspot(Number(pitch.toFixed?.(3) ?? pitch), Number(yaw.toFixed?.(3) ?? yaw));
           return;
         }
-        if (selectedHotspotId) {
-          onMoveHotspot(selectedHotspotId, Number(pitch.toFixed?.(1) ?? pitch), Number(yaw.toFixed?.(1) ?? yaw));
+        // Se c'è un marker selezionato e clicchiamo sulla scena, deseleziona
+        if (selectedHotspotIdRef.current) {
+          onSelectHotspot(null);
           return;
         }
       }
     };
-    viewer.on?.("click", onClick);
+
+    if (viewer.addEventListener) viewer.addEventListener("click", onClick);
+    else viewer.on?.("click", onClick);
 
     const onZoom = (ev: any) => {
       const z = ev?.ratio ?? ev?.zoom ?? 1;
@@ -130,7 +149,8 @@ export function PanoCanvas({
     return () => {
       console.log("Distruzione istanza Viewer per:", currentSceneUrl);
       try {
-        viewer.off?.("click", onClick);
+        if (viewer.removeEventListener) viewer.removeEventListener("click", onClick);
+        else viewer.off?.("click", onClick);
         viewer.off?.("zoom-updated", onZoom);
         viewer.destroy?.();
       } catch (e) {
@@ -142,33 +162,86 @@ export function PanoCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl]);
 
+  // Helper per generare l'HTML del marker in base al tipo e allo stato di selezione
+  const getMarkerHtml = (type: string, selected: boolean = false): string => {
+    const borderColor = selected ? "#ff69b4" : "#fff";
+    const glow = selected ? "0 0 12px 4px rgba(255,105,180,0.7),0 10px 15px -3px rgba(0,0,0,0.3)" : "0 10px 15px -3px rgba(0,0,0,0.3)";
+    const baseStyle = `width:36px;height:36px;border:3px solid ${borderColor};border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:${glow};cursor:grab;user-select:none`;
+
+    switch (type) {
+      case "door":
+        return `<div style="${baseStyle};background:#10b981"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a2 2 0 1 0 4 0 2 2 0 0 0-4 0"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/><path d="M17 17.5v-11"/></svg></div>`;
+      case "info":
+        return `<div style="${baseStyle};background:#6366f1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>`;
+      case "arrow":
+      default:
+        return `<div style="${baseStyle};background:#4f46e5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m12 8 4 4-4 4"/><path d="M8 12h8"/></svg></div>`;
+    }
+  };
+
   // 2. Sincronizzazione Marker e Gestione Interazioni Hotspot
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
 
-    const markers = viewer.getPlugin?.(MarkersPlugin) ?? null;
+    let markers = null;
+    try {
+      markers = viewer.getPlugin(MarkersPlugin);
+    } catch (e) {
+      console.log("getPlugin(MarkersPlugin) fallito", e);
+    }
     markersRef.current = markers;
+
+    const dragState: {
+      markerId: string | null;
+      dragging: boolean;
+      initYawRad: number;
+      initPitchRad: number;
+      mouseStartX: number;
+      mouseStartY: number;
+      finalYawRad?: number;
+      finalPitchRad?: number;
+    } = { markerId: null, dragging: false, initYawRad: 0, initPitchRad: 0, mouseStartX: 0, mouseStartY: 0 };
 
     const syncMarkers = () => {
       if (!markersRef.current) return;
-      const markersList = (scene?.hotspots ?? []).map((h) => ({
-        id: h.id,
-        longitude: h.yaw,
-        latitude: h.pitch,
-        tooltip: h.tooltip ?? h.type,
-        data: { hotspotId: h.id },
-        style: { width: 28, height: 28 },
-      }));
+
+      const hotspots = scene?.hotspots ?? [];
+      const posMap = markerPositionsRef.current;
+
       try {
-        markersRef.current.clearMarkers?.();
+        markersRef.current.clearMarkers();
       } catch (e) {
         // ignore
       }
-      if (markersRef.current.setMarkers) markersRef.current.setMarkers(markersList);
-      else if (markersRef.current.addMarker) {
-        for (const m of markersList) markersRef.current.addMarker(m);
-      }
+
+      hotspots.forEach((h) => {
+        const pitchDeg = typeof h.pitch === "number" ? h.pitch : parseFloat(h.pitch || "0");
+        const yawDeg = typeof h.yaw === "number" ? h.yaw : parseFloat(h.yaw || "0");
+        const pitchRad = (pitchDeg * Math.PI) / 180;
+        const yawRad = (yawDeg * Math.PI) / 180;
+
+        // Aggiorna la mappa delle posizioni con i dati correnti della scena
+        posMap.set(h.id, { yaw: yawRad, pitch: pitchRad });
+
+        try {
+          markersRef.current.addMarker({
+            id: h.id,
+            position: { yaw: yawRad, pitch: pitchRad },
+            size: { width: 36, height: 36 },
+            anchor: "center center",
+            tooltip: {
+              content: h.tooltip || h.type,
+              position: "top center",
+              trigger: "hover",
+            },
+            data: { hotspotId: h.id },
+            html: getMarkerHtml(h.type, h.id === selectedHotspotId),
+          });
+        } catch (err) {
+          console.error("Errore aggiunta marker:", err);
+        }
+      });
     };
 
     const onSelectMarker = (e: any) => {
@@ -188,8 +261,135 @@ export function PanoCanvas({
       window.setTimeout(() => setToast(null), 2600);
     };
 
-    const alreadyLoaded = !!viewer.getPanorama?.();
-    if (alreadyLoaded) syncMarkers();
+    // Sincronizza i marker dopo un breve ritardo per assicurare che il panorama sia caricato
+    const initialSyncTimer = window.setTimeout(() => {
+      syncMarkers();
+
+      // Dopo aver creato i marker, attacha i listener di drag in editor mode
+      if (markersRef.current && mode === "editor") {
+        try {
+          const allMarkers = markersRef.current.getMarkers?.();
+          if (allMarkers) {
+            allMarkers.forEach((m: any) => {
+              const el = m.element as HTMLElement | undefined;
+              if (!el) return;
+              el.style.cursor = "grab";
+
+              el.addEventListener("mousedown", (e: MouseEvent) => {
+                if (modeRef.current !== "editor") return;
+                e.stopPropagation();
+                e.preventDefault();
+
+                // Seleziona il marker — apre la sidebar
+                onSelectHotspot(m.id);
+
+                const viewer = viewerRef.current;
+                if (!viewer) return;
+
+                // Disabilita la rotazione della camera durante il drag
+                try {
+                  viewer.setOption('mousemove', false);
+                } catch (_) {}
+
+                // Leggi posizione corrente dalla mappa (ref, sempre aggiornata)
+                const saved = markerPositionsRef.current.get(m.id);
+                const initYawRad = saved?.yaw ?? 0;
+                const initPitchRad = saved?.pitch ?? 0;
+
+                // Salva stato iniziale
+                dragState.markerId = m.id;
+                dragState.dragging = true;
+                dragState.initYawRad = initYawRad;
+                dragState.initPitchRad = initPitchRad;
+                dragState.mouseStartX = e.clientX;
+                dragState.mouseStartY = e.clientY;
+
+                // Sensibilità: 0.3° per pixel di movimento mouse
+                const radPerPx = (0.3 * Math.PI) / 180;
+
+                const onMouseMove = (ev: MouseEvent) => {
+                  if (!dragState.dragging || !dragState.markerId || !containerRef.current) return;
+
+                  const dx = ev.clientX - dragState.mouseStartX;
+                  const dy = ev.clientY - dragState.mouseStartY;
+
+                  const containerWidth = containerRef.current.clientWidth || 1000;
+                  const containerHeight = containerRef.current.clientHeight || 600;
+
+                  const viewer = viewerRef.current;
+                  if (!viewer) return;
+
+                  // 1. Recupera il FOV verticale REALE corrente di PSV v5 (in radianti)
+                  // PSV v5 memorizza il vFov corrente nello stato interno della camera
+                  let vFovRad = Math.PI / 3; // Fallback ~60°
+                  try {
+                    const defaultFovDeg = viewer.getOption?.("defaultFov") ?? 60;
+                    vFovRad = viewer.state?.vFov ?? (defaultFovDeg * Math.PI) / 180;
+                  } catch (_) {}
+
+                  // 2. Calcolo trigonomerico dell'angolo di spostamento esatto
+                  // Convertiamo lo spostamento in pixel (dx, dy) rispetto alla mezza altezza del canvas proiettata
+                  const halfH = containerHeight / 2;
+                  const tanHalfVFov = Math.tan(vFovRad / 2);
+
+                  // Spostamento in radianti sferici proporzionale alla proiezione della prospettiva
+                  const yawDelta = Math.atan((dx / halfH) * tanHalfVFov);
+                  const pitchDelta = Math.atan((dy / halfH) * tanHalfVFov);
+
+                  // 3. Nuove coordinate traslate (inversione del pitch dy per sistema sferico)
+                  const newYawRad = dragState.initYawRad + yawDelta;
+                  const newPitchRad = Math.max(
+                    -Math.PI / 2 + 0.01,
+                    Math.min(Math.PI / 2 - 0.01, dragState.initPitchRad - pitchDelta)
+                  );
+
+                  try {
+                    markersRef.current?.updateMarker?.({
+                      id: dragState.markerId,
+                      position: { yaw: newYawRad, pitch: newPitchRad },
+                    });
+
+                    markerPositionsRef.current.set(dragState.markerId, {
+                      yaw: newYawRad,
+                      pitch: newPitchRad,
+                    });
+                    dragState.finalYawRad = newYawRad;
+                    dragState.finalPitchRad = newPitchRad;
+                  } catch (er) {
+                    // ignore
+                  }
+                };
+
+                const onMouseUp = () => {
+                  dragState.dragging = false;
+
+                  // Riabilita la rotazione della camera
+                  try {
+                    viewer.setOption('mousemove', true);
+                  } catch (_) {}
+
+                  if (dragState.markerId && dragState.finalYawRad !== undefined && dragState.finalPitchRad !== undefined) {
+                    const yawDeg = (dragState.finalYawRad * 180) / Math.PI;
+                    const pitchDeg = (dragState.finalPitchRad * 180) / Math.PI;
+                    onMoveHotspot(dragState.markerId, Number(pitchDeg.toFixed(3)), Number(yawDeg.toFixed(3)));
+                  }
+                  dragState.markerId = null;
+                  delete dragState.finalYawRad;
+                  delete dragState.finalPitchRad;
+                  window.removeEventListener("mousemove", onMouseMove);
+                  window.removeEventListener("mouseup", onMouseUp);
+                };
+
+                window.addEventListener("mousemove", onMouseMove);
+                window.addEventListener("mouseup", onMouseUp);
+              });
+            });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }, 500);
     viewer.on?.("panorama-loaded", syncMarkers);
 
     try {
@@ -200,6 +400,9 @@ export function PanoCanvas({
     }
 
     return () => {
+      window.clearTimeout(initialSyncTimer);
+      dragState.dragging = false;
+      dragState.markerId = null;
       try {
         markersRef.current?.off?.("select-marker", onSelectMarker);
         markersRef.current?.off?.("click-marker", onSelectMarker);
@@ -214,34 +417,60 @@ export function PanoCanvas({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene?.hotspots, imageUrl, mode]);
+  }, [scene?.hotspots, imageUrl, mode, selectedHotspotId]);
 
   // 3. Gestione Zoom e Resize
-  const applyZoom = useCallback(
-    (next: number) => {
-      const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, next));
-      setZoom(clamped);
-      onZoomChange(Number(clamped.toFixed(2)));
-    },
-    [onZoomChange],
-  );
+  const zoomIn = useCallback(() => {
+    try {
+      const v = viewerRef.current;
+      if (!v) return;
+      v.zoomIn(15);
+      const newZoom = v.getZoomLevel?.() ?? 1;
+      setZoom(newZoom);
+      onZoomChange(Number(newZoom));
+    } catch (e) {
+      // ignore
+    }
+  }, [onZoomChange]);
 
-  const zoomRef = useRef(applyZoom);
-  zoomRef.current = applyZoom;
+  const zoomOut = useCallback(() => {
+    try {
+      const v = viewerRef.current;
+      if (!v) return;
+      v.zoomOut(15);
+      const newZoom = v.getZoomLevel?.() ?? 1;
+      setZoom(newZoom);
+      onZoomChange(Number(newZoom));
+    } catch (e) {
+      // ignore
+    }
+  }, [onZoomChange]);
+
+  const zoomRef = useRef(zoomIn);
+  zoomRef.current = zoomIn;
   const currentZoom = useRef(zoom);
   currentZoom.current = zoom;
 
-  /* useEffect(() => {
+  useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
-      zoomRef.current(currentZoom.current * Math.exp(-dy * 0.0015));
+      const v = viewerRef.current;
+      if (!v) return;
+      if (dy < 0) {
+        v.zoomIn(15);
+      } else {
+        v.zoomOut(15);
+      }
+      const newZoom = v.getZoomLevel?.() ?? 1;
+      setZoom(newZoom);
+      onZoomChange(Number(newZoom));
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []); */
+  }, [onZoomChange]);
 
   return (
     <div className="relative flex-1 overflow-hidden bg-background">
@@ -266,13 +495,13 @@ export function PanoCanvas({
       )}
 
       <div className="absolute bottom-4 right-4 flex flex-col gap-1 rounded-lg border border-border bg-card/90 p-1 backdrop-blur z-10">
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => applyZoom(zoom * 1.2)}>
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={zoomIn}>
           <Plus className="h-4 w-4" />
         </Button>
         <div className="px-1 text-center text-[10px] tabular-nums text-muted-foreground">
           {zoom.toFixed(1)}x
         </div>
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => applyZoom(zoom / 1.2)}>
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={zoomOut}>
           <Minus className="h-4 w-4" />
         </Button>
       </div>
