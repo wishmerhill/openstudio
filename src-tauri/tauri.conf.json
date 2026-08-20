@@ -37,9 +37,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "nsis": {
-      "installMode": "currentUser"
-    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }
