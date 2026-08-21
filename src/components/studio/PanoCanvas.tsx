@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DoorOpen, Info, MoveRight, Minus, Plus, Crosshair, X } from "lucide-react";
+import { DoorOpen, Eye, Info, MoveRight, Minus, Pencil, Plus, Crosshair, X } from "lucide-react";
 import type { Scene } from "@/types/tour";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ interface Props {
   onMoveHotspot: (id: string, pitch: number, yaw: number) => void;
   onNavigate: (sceneId: string) => void;
   onZoomChange: (zoom: number) => void;
+  onModeChange: (mode: "editor" | "preview") => void;
 }
 
 export function PanoCanvas({
@@ -36,6 +37,7 @@ export function PanoCanvas({
   onMoveHotspot,
   onNavigate,
   onZoomChange,
+  onModeChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<any | null>(null);
@@ -556,6 +558,30 @@ export function PanoCanvas({
           "relative w-full h-full min-h-[500px] overflow-hidden touch-none select-none",
         )}
       />
+
+      {/* Floating Edit/Preview toggle */}
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-900/80 p-1 backdrop-blur-md">
+        {(["editor", "preview"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onModeChange(value)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-all",
+              mode === value
+                ? "bg-cyan-400 text-slate-950"
+                : "text-slate-400 hover:text-white",
+            )}
+          >
+            {value === "editor" ? (
+              <Pencil className="h-3.5 w-3.5" />
+            ) : (
+              <Eye className="h-3.5 w-3.5" />
+            )}
+            {value === "editor" ? "Edit" : "Preview"}
+          </button>
+        ))}
+      </div>
 
       {placing && mode === "editor" && (
         <div className="pointer-events-none absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-full border border-primary/60 bg-card/90 px-3 py-1.5 text-xs text-foreground z-10">

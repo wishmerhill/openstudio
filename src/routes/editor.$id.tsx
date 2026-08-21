@@ -5,11 +5,9 @@ import {
   ChevronDown,
   Compass,
   Download,
-  Eye,
   FileArchive,
   MapPin,
   Monitor,
-  Pencil,
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -268,32 +266,6 @@ function Studio() {
         </Badge>
 
         <div className="ml-auto flex items-center gap-2">
-          <div className="flex rounded-md border border-border bg-panel p-0.5">
-            {(["editor", "preview"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => {
-                  setMode(value);
-                  setPlacing(false);
-                  if (value === "preview") setSelectedHotspotId(null);
-                }}
-                className={cn(
-                  "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                  mode === value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {value === "editor" ? (
-                  <Pencil className="h-3 w-3" />
-                ) : (
-                  <Eye className="h-3 w-3" />
-                )}
-                {value === "editor" ? "Editor Mode" : "Preview Mode"}
-              </button>
-            ))}
-          </div>
           <Button
             size="sm"
             variant={placing ? "default" : "secondary"}
@@ -387,6 +359,11 @@ function Studio() {
             }}
             onZoomChange={(zoom) => {
               if (mode === "editor" && activeSceneId) patchScene(activeSceneId, { defaultZoom: zoom });
+            }}
+            onModeChange={(newMode) => {
+              setMode(newMode);
+              setPlacing(false);
+              if (newMode === "preview") setSelectedHotspotId(null);
             }}
           />
         </div>
