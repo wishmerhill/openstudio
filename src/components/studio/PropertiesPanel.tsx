@@ -12,8 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import MDEditor from "@uiw/react-md-editor";
-
 interface Props {
   scene: Scene | null;
   scenes: Scene[];
@@ -224,14 +222,12 @@ export function PropertiesPanel({
           {isInfo && (
             <div className="space-y-1.5">
               <Label className="text-xs">Content (Markdown)</Label>
-              <div data-color-mode="dark">
-                <MDEditor
-                  value={hotspot.content ?? ""}
-                  onChange={(val) => onHotspotChange({ content: val ?? "" })}
-                  preview="edit"
-                  height={200}
-                />
-              </div>
+              <textarea
+                className="w-full h-32 resize-y rounded-md border border-border bg-slate-800 p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                value={hotspot.content ?? ""}
+                onChange={(e) => onHotspotChange({ content: e.target.value })}
+                placeholder="Write Markdown content here..."
+              />
             </div>
           )}
 
