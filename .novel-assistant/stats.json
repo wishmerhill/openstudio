@@ -16,10 +16,16 @@
       "wordsWritten": 5576,
       "timeSpentMinutes": 0,
       "sessionsCount": 0
+    },
+    {
+      "date": "2026-08-21",
+      "wordsWritten": 678,
+      "timeSpentMinutes": 0,
+      "sessionsCount": 0
     }
   ],
   "currentStreak": 1,
   "longestStreak": 1,
-  "totalWordsEver": 6151,
+  "totalWordsEver": 6829,
   "projectStartDate": "2026-08-19"
 }

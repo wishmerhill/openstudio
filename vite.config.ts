@@ -18,6 +18,9 @@ export default defineConfig({
       port: 3000,
       strictPort: true,
     },
+    resolve: {
+      tsconfigPaths: true,
+    },
   },
   nitro: {
     prerender: {
