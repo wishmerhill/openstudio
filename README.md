@@ -1,4 +1,5 @@
 # LibreTours 360
+## An open-source, self-hosted web editor and viewer for creating interactive 360° virtual tours.
 
 **Create, edit and export interactive 360° virtual tours — locally in your browser, or as a native desktop app.**
 
