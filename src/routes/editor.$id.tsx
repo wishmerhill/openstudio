@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  ChevronDown,
   Compass,
+  Download,
   Eye,
   FileArchive,
   MapPin,
@@ -17,6 +19,12 @@ import { getProject, upsertProject } from "@/lib/storage";
 import { deleteBlob, putBlob, resolveUrl } from "@/lib/idb";
 import { exportZip3D, exportZip2D } from "@/lib/export";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LeftSidebar } from "@/components/studio/LeftSidebar";
@@ -297,38 +305,42 @@ function Studio() {
           <Button size="sm" variant="secondary" onClick={handleSave}>
             <Save className="mr-1.5 h-3.5 w-3.5" /> Save
           </Button>
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={async () => {
-                const saved = upsertProject(project);
-                setProject(saved);
-                await exportZip2D(saved);
-                toast.success("Export 2D completato");
-              }}
-            >
-              <FileArchive className="mr-1.5 h-3.5 w-3.5" /> Offline (2D)
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setExportDesktopOpen(true)}
-            >
-              <Monitor className="mr-1.5 h-3.5 w-3.5" /> Desktop App
-            </Button>
-            <Button
-              size="sm"
-              onClick={async () => {
-                const saved = upsertProject(project);
-                setProject(saved);
-                await exportZip3D(saved);
-                toast.success("Export 3D completato");
-              }}
-            >
-              <FileArchive className="mr-1.5 h-3.5 w-3.5" /> Server Web (3D)
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="default">
+                <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+                <ChevronDown className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={async () => {
+                  const saved = upsertProject(project);
+                  setProject(saved);
+                  await exportZip2D(saved);
+                  toast.success("Export 2D completato");
+                }}
+              >
+                <FileArchive className="mr-2 h-4 w-4" />
+                Offline (2D)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setExportDesktopOpen(true)}>
+                <Monitor className="mr-2 h-4 w-4" />
+                Desktop App
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  const saved = upsertProject(project);
+                  setProject(saved);
+                  await exportZip3D(saved);
+                  toast.success("Export 3D completato");
+                }}
+              >
+                <FileArchive className="mr-2 h-4 w-4" />
+                Server Web (3D)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
