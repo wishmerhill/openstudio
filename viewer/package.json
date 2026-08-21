@@ -1,0 +1,12 @@
+{
+  "name": "opentour-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "neu build",
+    "create": "neu create"
+  },
+  "devDependencies": {
+    "@neutralinojs/neu": "^11.4.0"
+  }
+}

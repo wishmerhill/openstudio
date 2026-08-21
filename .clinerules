@@ -1,0 +1,9 @@
+Una task = Una chat nuova.
+Non appena un compito o una fase di refactoring è completata (o resettata con Git), chiudi la chat e apri un nuovo task.
+
+
+# Regole di Progetto per Cline
+
+1. Il motore 3D e l'Editor dello Studio sono STABILI. Non toccare i file in `src/components/`, `src/store/` o `src/engine/` a meno che non sia esplicitamente richiesto dal prompt.
+2. Lavora ESCLUSIVAMENTE sulle funzioni isolate nella cartella di esportazione/build (es. `src/lib/export/` o `/viewer`).
+3. Non effettuare refactoring non richiesti su codice funzionante
