@@ -78,13 +78,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "OpenTour Studio" },
+      { title: "LibreTours 360 - Studio" },
       {
         name: "description",
         content: "Local-first 360° virtual tour creator and editor in your browser.",
       },
-      { name: "author", content: "OpenTour Studio" },
-      { property: "og:title", content: "OpenTour Studio" },
+      { name: "author", content: "LibreTours 360" },
+      { property: "og:title", content: "LibreTours 360 - Studio" },
       {
         property: "og:description",
         content: "Local-first 360° virtual tour creator and editor in your browser.",

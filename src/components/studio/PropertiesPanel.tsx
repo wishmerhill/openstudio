@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import MDEditor from "@uiw/react-md-editor";
 
 interface Props {
   scene: Scene | null;
@@ -37,6 +38,8 @@ export function PropertiesPanel({
   onDeleteHotspot,
   onCreateReverseHotspot,
 }: Props) {
+  const isInfo = hotspot?.type === "info";
+
   return (
     <aside className="flex w-76 shrink-0 flex-col overflow-y-auto border-l border-border bg-sidebar">
       <div className="border-b border-border px-3 py-2.5">
@@ -171,44 +174,64 @@ export function PropertiesPanel({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs">Target scene</Label>
-            <Select
-              value={hotspot.targetSceneId ?? "none"}
-              onValueChange={(v) => onHotspotChange({ targetSceneId: v === "none" ? null : v })}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {scenes
-                  .filter((s) => s.id !== scene?.id)
-                  .map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {hotspot.targetSceneId && (
-            <div className="flex items-center justify-between rounded-md border border-border bg-panel px-3 py-2">
-              <div className="flex items-center gap-2">
-                <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
-                <Label className="text-xs cursor-pointer" htmlFor="reverse-hotspot">
-                  Create return hotspot
-                </Label>
+          {/* Target scene: hidden for info markers, shown for navigation markers */}
+          {!isInfo && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Target scene</Label>
+                <Select
+                  value={hotspot.targetSceneId ?? "none"}
+                  onValueChange={(v) => onHotspotChange({ targetSceneId: v === "none" ? null : v })}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {scenes
+                      .filter((s) => s.id !== scene?.id)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Switch
-                id="reverse-hotspot"
-                onCheckedChange={(checked) => {
-                  if (checked && hotspot.targetSceneId) {
-                    onCreateReverseHotspot?.(hotspot.targetSceneId);
-                  }
-                }}
-              />
+
+              {hotspot.targetSceneId && (
+                <div className="flex items-center justify-between rounded-md border border-border bg-panel px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Label className="text-xs cursor-pointer" htmlFor="reverse-hotspot">
+                      Create return hotspot
+                    </Label>
+                  </div>
+                  <Switch
+                    id="reverse-hotspot"
+                    onCheckedChange={(checked) => {
+                      if (checked && hotspot.targetSceneId) {
+                        onCreateReverseHotspot?.(hotspot.targetSceneId);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Markdown content editor for info markers */}
+          {isInfo && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Content (Markdown)</Label>
+              <div data-color-mode="dark">
+                <MDEditor
+                  value={hotspot.content ?? ""}
+                  onChange={(val) => onHotspotChange({ content: val ?? "" })}
+                  preview="edit"
+                  height={200}
+                />
+              </div>
             </div>
           )}
 
@@ -228,7 +251,7 @@ export function PropertiesPanel({
         </div>
       ) : (
         <p className="p-3 text-xs text-muted-foreground">
-          Select a hotspot on the canvas, or use “Add Hotspot” to place a new one.
+          Select a hotspot on the canvas, or use "Add Hotspot" to place a new one.
         </p>
       )}
     </aside>

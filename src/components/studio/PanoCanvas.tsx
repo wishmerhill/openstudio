@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DoorOpen, Info, MoveRight, Minus, Plus, Crosshair } from "lucide-react";
+import { DoorOpen, Info, MoveRight, Minus, Plus, Crosshair, X } from "lucide-react";
 import type { Scene } from "@/types/tour";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import { Viewer } from "@photo-sphere-viewer/core";
 import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
 import "@photo-sphere-viewer/core/index.css";
 import "@photo-sphere-viewer/markers-plugin/index.css";
+import ReactMarkdown from "react-markdown";
 
 const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 3;
@@ -54,6 +55,7 @@ export function PanoCanvas({
   sceneRef.current = scene;
   const [zoom, setZoom] = useState(scene?.defaultZoom ?? 1);
   const [toast, setToast] = useState<string | null>(null);
+  const [infoPopup, setInfoPopup] = useState<{ title: string; content: string } | null>(null);
 
   // 1. Inizializzazione Viewer (Eseguito una sola volta per URL immagine)
   useEffect(() => {
@@ -260,7 +262,19 @@ export function PanoCanvas({
         return;
       }
 
-      // Preview mode: naviga se c'è un targetSceneId, altrimenti mostra tooltip
+      // Preview mode
+      if (hs.type === "info") {
+        // Info marker: show popup with Markdown content
+        if (hs.content) {
+          setInfoPopup({ title: hs.tooltip || "Info", content: hs.content });
+        } else {
+          setToast(hs.tooltip || "No information");
+          window.setTimeout(() => setToast(null), 2600);
+        }
+        return;
+      }
+
+      // Navigation markers (door, arrow)
       if (hs.targetSceneId) {
         onNavigate(hs.targetSceneId);
         return;
@@ -414,6 +428,17 @@ export function PanoCanvas({
                   const hs = currentScene.hotspots.find((h) => h.id === m.id);
                   if (!hs) return;
 
+                  if (hs.type === "info") {
+                    // Info marker: show popup with Markdown content
+                    if (hs.content) {
+                      setInfoPopup({ title: hs.tooltip || "Info", content: hs.content });
+                    } else {
+                      setToast(hs.tooltip || "No information");
+                      window.setTimeout(() => setToast(null), 2600);
+                    }
+                    return;
+                  }
+
                   if (hs.targetSceneId) {
                     onNavigate(hs.targetSceneId);
                   } else {
@@ -458,7 +483,19 @@ export function PanoCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene?.hotspots, imageUrl, mode, selectedHotspotId]);
 
-  // 3. Gestione Zoom e Resize
+  // 3b. Chiusura popup info con tasto ESC
+  useEffect(() => {
+    if (!infoPopup) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setInfoPopup(null);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [infoPopup]);
+
+  // 4. Gestione Zoom e Resize
   const zoomIn = useCallback(() => {
     try {
       const v = viewerRef.current;
@@ -530,6 +567,34 @@ export function PanoCanvas({
       {toast && (
         <div className="pointer-events-none absolute bottom-20 left-1/2 max-w-sm -translate-x-1/2 rounded-lg border border-border bg-card/95 px-4 py-2.5 text-sm text-foreground shadow-lg z-10">
           {toast}
+        </div>
+      )}
+
+      {/* Info marker popup */}
+      {infoPopup && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center bg-black/40"
+          onClick={() => setInfoPopup(null)}
+        >
+          <div
+            className="mx-4 max-h-[80vh] max-w-lg overflow-y-auto rounded-xl border border-border bg-card shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h3 className="text-sm font-semibold text-foreground">{infoPopup.title}</h3>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={() => setInfoPopup(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="prose prose-sm prose-invert max-w-none px-4 py-3">
+              <ReactMarkdown>{infoPopup.content}</ReactMarkdown>
+            </div>
+          </div>
         </div>
       )}
 

@@ -38,13 +38,13 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "OpenTour Studio — 360° Virtual Tour Creator" },
+      { title: "LibreTours 360 — 360° Virtual Tour Creator" },
       {
         name: "description",
         content:
           "Build, edit and export interactive 360° virtual tours in your browser. Local-first panorama editor with hotspots, scenes and ZIP export.",
       },
-      { property: "og:title", content: "OpenTour Studio — 360° Virtual Tour Creator" },
+      { property: "og:title", content: "LibreTours 360 — 360° Virtual Tour Creator" },
       {
         property: "og:description",
         content:
@@ -81,7 +81,7 @@ function Dashboard() {
   }, [projects]);
 
   const handleNew = () => {
-    const project = createProject("Untitled Tour");
+    const project = createProject("LibreTours 360");
     upsertProject(project);
     navigate({ to: "/editor/$id", params: { id: project.id } });
   };
@@ -95,7 +95,7 @@ function Dashboard() {
       setProjects(next);
       toast.success(`Imported “${project.name}”`);
     } catch {
-      toast.error("That file isn't a valid OpenTour project JSON.");
+      toast.error("That file isn't a valid LibreTours 360 project JSON.");
     }
   };
 
@@ -107,7 +107,7 @@ function Dashboard() {
             <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Compass className="h-4 w-4" />
             </span>
-            <span className="text-sm font-semibold tracking-tight">OpenTour Studio</span>
+            <span className="text-sm font-semibold tracking-tight">LibreTours 360</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => importRef.current?.click()}>

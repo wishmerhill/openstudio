@@ -37,13 +37,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/editor/$id")({
   head: () => ({
     meta: [
-      { title: "Tour Studio — OpenTour Studio" },
+      { title: "Tour Studio — LibreTours 360" },
       {
         name: "description",
         content:
           "Edit 360° scenes, place navigation and info hotspots, preview the tour and export a standalone viewer package.",
       },
-      { property: "og:title", content: "Tour Studio — OpenTour Studio" },
+      { property: "og:title", content: "Tour Studio — LibreTours 360" },
       {
         property: "og:description",
         content: "Place hotspots on 360° panoramas and export an interactive virtual tour.",

@@ -63,7 +63,7 @@
 }
 
 :root {
-  /* OpenTour Studio — dark, high-density creative tool palette */
+  /* LibreTours 360 — dark, high-density creative tool palette */
   --radius: 0.5rem;
   --background: oklch(0.17 0.012 265);
   --foreground: oklch(0.965 0.004 265);

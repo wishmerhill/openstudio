@@ -84,7 +84,7 @@ export function ExportDesktopModal({ open, onOpenChange, project }: ExportDeskto
               id="app-name"
               value={appName}
               onChange={(e) => setAppName(e.target.value)}
-              placeholder="OpenTour Studio"
+              placeholder="LibreTours 360"
             />
           </div>
 

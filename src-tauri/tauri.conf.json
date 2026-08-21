@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "OpenTour Studio",
+  "productName": "LibreTours 360",
   "version": "0.1.0",
-  "identifier": "com.opentour.studio",
+  "identifier": "com.libretours.studio",
   "build": {
     "beforeBuildCommand": "npx vite build --config vite.tauri.config.ts",
     "beforeDevCommand": "npx vite --config vite.tauri.config.ts",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "OpenTour Studio",
+        "title": "LibreTours 360",
         "width": 1280,
         "height": 800,
         "minWidth": 900,

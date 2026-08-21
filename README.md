@@ -1,8 +1,8 @@
-# OpenTour Studio
+# LibreTours 360
 
 **Create, edit and export interactive 360° virtual tours — locally in your browser, or as a native desktop app.**
 
-OpenTour Studio is a local-first virtual tour editor. Drop in your 360° panoramas, link scenes together with clickable hotspots, preview the result with smooth equirectangular navigation, and export a standalone viewer for sharing.
+LibreTours 360 is a local-first virtual tour editor. Drop in your 360° panoramas, link scenes together with clickable hotspots, preview the result with smooth equirectangular navigation, and export a standalone viewer for sharing.
 
 Built with [TanStack Start](https://tanstack.com/router/latest/docs/framework/react/start/overview), [React](https://react.dev), [Photo Sphere Viewer](https://photo-sphere-viewer.js.org/), and [Tauri](https://v2.tauri.app/).
 
@@ -78,7 +78,7 @@ The static output (for SSR deployment) is generated in `.output/public/`.
 
 ## Desktop Build (macOS)
 
-OpenTour Studio can be packaged as a native macOS application using Tauri.
+LibreTours 360 can be packaged as a native macOS application using Tauri.
 
 ### Prerequisites for Tauri
 
@@ -197,7 +197,7 @@ Contributions are welcome! Here's how you can help:
 
 ## License
 
-Copyright (C) 2026 OpenTour Studio contributors
+Copyright (C) 2026 LibreTours 360 contributors
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

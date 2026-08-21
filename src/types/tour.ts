@@ -9,6 +9,8 @@ export interface Hotspot {
   yaw: number;
   tooltip: string;
   targetSceneId?: string | null;
+  /** Markdown content for info-type hotspots */
+  content?: string;
 }
 
 export interface Scene {

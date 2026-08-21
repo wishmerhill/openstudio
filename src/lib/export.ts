@@ -59,14 +59,83 @@ function viewerHtml3D(project: TourProject) {
     #scene-list button{padding:8px 14px;border-radius:10px;border:1px solid #3f3f46;
       background:rgba(24,24,27,.8);color:#d4d4d8;font-size:12px;cursor:pointer;backdrop-filter:blur(4px)}
     #scene-list button.active{background:#4f46e5;color:#fff;border-color:#4f46e5}
+    #info-modal-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5)}
+    #info-modal-overlay.open{display:flex}
+    #info-modal{max-width:32rem;max-height:80vh;width:90%;overflow-y:auto;border-radius:12px;border:1px solid #3f3f46;background:#18181b;box-shadow:0 25px 50px -12px rgba(0,0,0,.5)}
+    #info-modal-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #3f3f46}
+    #info-modal-title{font-size:14px;font-weight:600;color:#f4f4f5}
+    #info-modal-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;border-radius:6px;background:transparent;color:#a1a1aa;cursor:pointer;font-size:18px}
+    #info-modal-close:hover{background:#27272a;color:#f4f4f5}
+    #info-modal-body{padding:12px 16px;font-size:14px;line-height:1.6;color:#d4d4d8}
+    #info-modal-body h1,#info-modal-body h2,#info-modal-body h3{color:#f4f4f5;margin:12px 0 6px}
+    #info-modal-body h1{font-size:18px}
+    #info-modal-body h2{font-size:16px}
+    #info-modal-body h3{font-size:14px}
+    #info-modal-body p{margin:6px 0}
+    #info-modal-body ul,#info-modal-body ol{padding-left:20px;margin:6px 0}
+    #info-modal-body li{margin:2px 0}
+    #info-modal-body a{color:#818cf8;text-decoration:underline}
+    #info-modal-body strong{color:#f4f4f5}
+    #info-modal-body code{background:#27272a;padding:1px 4px;border-radius:4px;font-size:13px}
+    #info-modal-body pre{background:#27272a;padding:12px;border-radius:8px;overflow-x:auto;font-size:13px}
+    #info-modal-body blockquote{border-left:3px solid #52525b;padding-left:12px;margin:8px 0;color:#a1a1aa}
   </style>
 </head>
 <body>
   <div id="viewer"></div>
   <div id="title">${project.name}</div>
   <div id="scene-list"></div>
+  <div id="info-modal-overlay">
+    <div id="info-modal">
+      <div id="info-modal-header">
+        <span id="info-modal-title"></span>
+        <button id="info-modal-close">&times;</button>
+      </div>
+      <div id="info-modal-body"></div>
+    </div>
+  </div>
 
   <script type="module">
+    function showInfoModal(title, markdown) {
+      document.getElementById("info-modal-title").textContent = title;
+      document.getElementById("info-modal-body").innerHTML = simpleMarkdown(markdown);
+      document.getElementById("info-modal-overlay").classList.add("open");
+    }
+
+    function simpleMarkdown(text) {
+      var bt = String.fromCharCode(96);
+      var html = text
+        .replace(/&/g, "&")
+        .replace(/</g, "<")
+        .replace(/>/g, ">");
+      html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+      html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+      html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+      html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      html = html.replace(/^\- (.+)$/gm, "<li>$1</li>");
+      html = html.replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>");
+      html = html.replace(/^(\d+)\. (.+)$/gm, "<li>$2</li>");
+      html = html.replace(/(<li>.*<\/li>\n?)+/g, function(m) { return m.indexOf("<ol>") === -1 && m.indexOf("<ul>") === -1 ? "<ul>" + m + "</ul>" : m; });
+      html = html.replace(new RegExp(bt+bt+bt+'([\\s\\S]*?)'+bt+bt+bt, 'g'), "<pre><code>$1</code></pre>");
+      html = html.replace(new RegExp(bt+'([^'+bt+']+)'+bt, 'g'), "<code>$1</code>");
+      html = html.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
+      html = html.replace(/\n\n/g, "</p><p>");
+      html = "<p>" + html + "</p>";
+      html = html.replace(/<p><\/p>/g, "");
+      return html;
+    }
+
+    document.getElementById("info-modal-overlay").addEventListener("click", function(e) {
+      if (e.target === this) this.classList.remove("open");
+    });
+    document.getElementById("info-modal-close").addEventListener("click", function() {
+      document.getElementById("info-modal-overlay").classList.remove("open");
+    });
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") document.getElementById("info-modal-overlay").classList.remove("open");
+    });
     import { Viewer } from 'https://esm.sh/@photo-sphere-viewer/core@5';
     import { MarkersPlugin } from 'https://esm.sh/@photo-sphere-viewer/markers-plugin@5';
 
@@ -125,9 +194,18 @@ function viewerHtml3D(project: TourProject) {
         markersPlugin.addEventListener("select-marker", function(e) {
           const activeScene = getScene(currentSceneId);
           const hs = activeScene?.hotspots?.find(function(h) { return h.id === e.marker.id; });
-          if (hs && hs.targetSceneId) {
+          if (!hs) return;
+          if (hs.type === "info") {
+            if (hs.content) {
+              showInfoModal(hs.tooltip || "Info", hs.content);
+            } else if (hs.tooltip) {
+              alert(hs.tooltip);
+            }
+            return;
+          }
+          if (hs.targetSceneId) {
             loadScene(hs.targetSceneId);
-          } else if (hs && hs.tooltip) {
+          } else if (hs.tooltip) {
             alert(hs.tooltip);
           }
         });
