@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DoorOpen, Eye, Info, MoveRight, Minus, Pencil, Plus, Crosshair, X } from "lucide-react";
+import { DoorOpen, Eye, Info, LayoutGrid, Maximize2, MoveRight, Pencil, Crosshair, X, ZoomIn, ZoomOut } from "lucide-react";
 import type { Scene } from "@/types/tour";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,20 @@ import ReactMarkdown from "react-markdown";
 
 const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 3;
+
+/**
+ * Converts a zoom multiplier (0.6x–3x) to PSV zoom level (0–100).
+ */
+function multiplierToPsv(multiplier: number): number {
+  return ((multiplier - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)) * 100;
+}
+
+/**
+ * Converts a PSV zoom level (0–100) to a zoom multiplier (0.6x–3x).
+ */
+function psvToMultiplier(psvLevel: number): number {
+  return MIN_ZOOM + (psvLevel / 100) * (MAX_ZOOM - MIN_ZOOM);
+}
 
 interface Props {
   scene: Scene | null;
@@ -83,6 +97,10 @@ export function PanoCanvas({
 
     console.log("Inizializzazione Viewer per:", currentSceneUrl);
 
+    // Convert the app's multiplier zoom (0.6–3) to PSV zoom level (0–100)
+    const initialMultiplier = scene?.defaultZoom ?? 1;
+    const initialPsvZoom = multiplierToPsv(initialMultiplier);
+
     const viewer = new Viewer({
       container: el,
       panorama: currentSceneUrl,
@@ -94,7 +112,7 @@ export function PanoCanvas({
       zoomSpeed: 1,
       minFov: 30,
       maxFov: 90,
-      defaultZoomLvl: 1,
+      defaultZoomLvl: initialPsvZoom,
       mousemove: true,
       moveSpeed: 1,
       plugins: [MarkersPlugin],
@@ -134,9 +152,11 @@ export function PanoCanvas({
     else viewer.on?.("click", onClick);
 
     const onZoom = (ev: any) => {
-      const z = ev?.ratio ?? ev?.zoom ?? 1;
-      setZoom(z);
-      onZoomChange(Number(z));
+      // PSV ZoomUpdatedEvent provides zoomLevel (0–100)
+      const psvLevel = ev?.zoomLevel ?? ev?.ratio ?? ev?.zoom ?? 50;
+      const multiplier = psvToMultiplier(psvLevel);
+      setZoom(multiplier);
+      onZoomChange(Number(multiplier));
     };
     viewer.on?.("zoom-updated", onZoom);
 
@@ -503,9 +523,10 @@ export function PanoCanvas({
       const v = viewerRef.current;
       if (!v) return;
       v.zoomIn(15);
-      const newZoom = v.getZoomLevel?.() ?? 1;
-      setZoom(newZoom);
-      onZoomChange(Number(newZoom));
+      const psvLevel = v.getZoomLevel?.() ?? 50;
+      const multiplier = psvToMultiplier(psvLevel);
+      setZoom(multiplier);
+      onZoomChange(Number(multiplier));
     } catch (e) {
       // ignore
     }
@@ -516,9 +537,10 @@ export function PanoCanvas({
       const v = viewerRef.current;
       if (!v) return;
       v.zoomOut(15);
-      const newZoom = v.getZoomLevel?.() ?? 1;
-      setZoom(newZoom);
-      onZoomChange(Number(newZoom));
+      const psvLevel = v.getZoomLevel?.() ?? 50;
+      const multiplier = psvToMultiplier(psvLevel);
+      setZoom(multiplier);
+      onZoomChange(Number(multiplier));
     } catch (e) {
       // ignore
     }
@@ -542,9 +564,10 @@ export function PanoCanvas({
       } else {
         v.zoomOut(15);
       }
-      const newZoom = v.getZoomLevel?.() ?? 1;
-      setZoom(newZoom);
-      onZoomChange(Number(newZoom));
+      const psvLevel = v.getZoomLevel?.() ?? 50;
+      const multiplier = psvToMultiplier(psvLevel);
+      setZoom(multiplier);
+      onZoomChange(Number(multiplier));
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -624,16 +647,40 @@ export function PanoCanvas({
         </div>
       )}
 
-      <div className="absolute bottom-4 right-4 flex flex-col gap-1 rounded-lg border border-border bg-card/90 p-1 backdrop-blur z-10">
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={zoomIn}>
-          <Plus className="h-4 w-4" />
-        </Button>
-        <div className="px-1 text-center text-[10px] tabular-nums text-muted-foreground">
-          {zoom.toFixed(1)}x
-        </div>
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={zoomOut}>
-          <Minus className="h-4 w-4" />
-        </Button>
+      {/* Zoom toolbar */}
+      <div className="absolute bottom-4 right-4 z-10 flex items-center gap-3 rounded-full border border-slate-700/50 bg-slate-900/80 px-4 py-2 text-sm text-slate-200 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={zoomOut}
+          className="flex items-center justify-center text-slate-400 transition-colors hover:text-white"
+        >
+          <ZoomOut className="h-4 w-4" />
+        </button>
+        <span className="min-w-[3ch] text-center text-xs tabular-nums">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={zoomIn}
+          className="flex items-center justify-center text-slate-400 transition-colors hover:text-white"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </button>
+        <div className="h-4 w-px bg-slate-700/60" />
+        <button
+          type="button"
+          className="flex items-center justify-center text-slate-400 transition-colors hover:text-white disabled:opacity-40"
+          disabled
+        >
+          <LayoutGrid className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          className="flex items-center justify-center text-slate-400 transition-colors hover:text-white disabled:opacity-40"
+          disabled
+        >
+          <Maximize2 className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
